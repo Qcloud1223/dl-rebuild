@@ -1,6 +1,8 @@
 {
     "files.associations": {
         "elf.h": "c",
-        "dlfcn.h": "c"
+        "dlfcn.h": "c",
+        "stdlib.h": "c",
+        "dl-rebuild.h": "c"
     }
 }
