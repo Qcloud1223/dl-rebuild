@@ -1,4 +1,4 @@
-# dl-rebuild: a minimum counterpart of `ld.so`
+# dl-rebuild: A minimal rebuild of basic functionalities of Linux `ld.so`
 ## Intro
 This project is originally part of an academic work, which wants to totally take over memory management,
 for which we have to dictate where to load the shared object.
