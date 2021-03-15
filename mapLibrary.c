@@ -236,6 +236,7 @@ static void fill_info(Library *lib)
     rebase(DT_RELA);
     rebase(DT_JMPREL);
     rebase(DT_NUM + DT_GNU_HASH_NEW); //DT_GNU_HASH
+    rebase(DT_PLTGOT);
 }
 
 static void setup_hash(Library *l)

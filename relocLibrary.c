@@ -18,7 +18,7 @@ dl_new_hash(const char *s)
     return h & 0xffffffff;
 }
 
-static void *symbolLookup(Library *dep, const char *name)
+void *symbolLookup(Library *dep, const char *name)
 {
     //find symbol `name` inside the symbol table of `dep`
     if(dep->fake)
@@ -72,7 +72,7 @@ static void *symbolLookup(Library *dep, const char *name)
     return NULL; //not this dependency
 }
 
-void relocRela(Library *lib)
+static void relocRela(Library *lib)
 {
     //use `readelf --relocs` to see '.rela.dyn'
     //this includes relative and glob_dat
@@ -116,7 +116,30 @@ void relocRela(Library *lib)
 
 }
 
-void relocPLT(Library *lib, int mode)
+static inline void lazyReloc(Library *lib, void *start, void *end)
+{
+    Elf64_Rela *plt_start = start;
+    Elf64_Rela *plt_end = end;
+    for(Elf64_Rela *it = plt_start; it < plt_end; it++)
+    {
+        Elf64_Xword r_info = ELF64_R_TYPE(it->r_info);
+        Elf64_Addr *reloc_addr = (void *)(lib->addr + it->r_offset);
+        switch (r_info)
+        {
+        case R_X86_64_JUMP_SLOT:
+            //do a simple rebasing if we're using lazy mode
+            *reloc_addr += lib->addr;
+            break;
+        
+        default:
+            fprintf(stderr, "relocLibrary error: unexpected PLT reloc type %lx expected in %s\n", r_info, lib->name);
+            exit(-1);
+            break;
+        }
+    }
+}
+
+static void relocPLT(Library *lib, int mode)
 {
     //use `readelf --relocs` to see '.rela.plt'
     Elf64_Addr start = lib->dyn_info[DT_JMPREL]->d_un.d_ptr;
@@ -124,6 +147,11 @@ void relocPLT(Library *lib, int mode)
     
     Elf64_Rela *plt_start = (void *)start;
     Elf64_Rela *plt_end = (void *)(start + size);
+    if(mode)
+    {
+        lazyReloc(lib, plt_start, plt_end);
+        return;
+    }
     Elf64_Sym *symtab = (Elf64_Sym *)lib->dyn_info[DT_SYMTAB]->d_un.d_ptr;
     const char *strtab = (const char *)lib->dyn_info[DT_STRTAB]->d_un.d_ptr;
     for(Elf64_Rela *it = plt_start; it < plt_end; it++)
@@ -159,10 +187,24 @@ void relocPLT(Library *lib, int mode)
     }
 }
 
+static void relocInit(Library *lib, int mode)
+{
+    //fill in critical GOT info needed by lazy binding
+    extern void trampoline(Elf64_Word);
+
+    if(mode)
+    {
+        Elf64_Addr *got = (Elf64_Addr *)lib->dyn_info[DT_PLTGOT]->d_un.d_ptr;
+        got[1] = (Elf64_Addr)lib;
+        got[2] = (Elf64_Addr) &trampoline;
+    }
+}
+
 void relocLibrary(Library *lib, int mode)
 {
     if(lib->fake)
         return; //no point in relocating a fake object
+    relocInit(lib, mode);
     relocRela(lib);
     relocPLT(lib, mode);
 }

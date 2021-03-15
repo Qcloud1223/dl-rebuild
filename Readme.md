@@ -16,9 +16,10 @@ I want this project to have the following features:
 Happy linking!
 
 ## TODO
-- [ ] Implement lazy binding(hopefully in next commit)
+- [x] Implement lazy binding
 - [ ] Restructure symbol hashing
 - [ ] add `closeLibrary`
+- [ ] add some basic tests to explain the APIs and functionality
 
 ## Known Bug
 Because this is not a full-function dynamic linker, some of the "black magic" used by `ld.so` is not implemented.
